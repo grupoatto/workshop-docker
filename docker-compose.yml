@@ -1,0 +1,59 @@
+version: '3.8'
+
+networks:
+  workshop-network:
+    driver: bridge
+
+services:
+  workshop-api:
+    build:
+      context: ./api
+      dockerfile: ./Dockerfile
+    image: api:workshop
+    working_dir: /home/node/api
+    user: node:node
+    restart: always
+    networks:
+      - workshop-network
+
+  workshop-db:
+    build:
+      context: ./pg
+      dockerfile: ./Dockerfile
+    image: db:workshop
+    container_name: workshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_USERNAME: docker
+      POSTGRESQL_PASSWORD: docker
+      POSTGRESQL_DATABASE: docker
+    ports:
+      - "5432:5432"
+    networks:
+      - workshop-network
+
+  workshop-web:
+    build:
+      context: ./web
+      dockerfile: ./Dockerfile
+    image: web:workshop
+    container_name: workshop-web
+    working_dir: /home/node/web
+    user: node:node
+    restart: always
+    networks:
+      - workshop-network
+
+  workshop-proxy:
+    image: nginx:alpine
+    container_name: workshop-nginx
+    restart: unless-stopped
+    volumes:
+      - "./nginx/proxy.conf:/etc/nginx/nginx.conf"
+    ports:
+      - "80:80"
+    depends_on:
+      - workshop-web
+      - workshop-api
+    networks:
+      - workshop-network
